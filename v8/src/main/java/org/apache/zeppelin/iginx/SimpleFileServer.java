@@ -3,17 +3,17 @@ package org.apache.zeppelin.iginx;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.*;
 import java.util.Enumeration;
 import java.util.logging.FileHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SimpleFileServer {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleFileServer.class);
   public static String PREFIX = "/files";
+  public static String PREFIX_GRAPH = "/graphs";
   private int port;
   private String fileDir;
 
@@ -45,12 +45,80 @@ public class SimpleFileServer {
     }
     httpServer = HttpServer.create(new InetSocketAddress(port), 0);
     httpServer.createContext(PREFIX, new FileHandler(fileDir));
+    httpServer.createContext(PREFIX_GRAPH, new GraphHandler(fileDir));
     httpServer.start();
   }
 
   public void stop() {
     if (httpServer != null) {
       httpServer.stop(0);
+    }
+  }
+
+  static class GraphHandler implements HttpHandler {
+    private String basePath;
+
+    public GraphHandler(String basePath) {
+      this.basePath = basePath;
+    }
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+      exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+
+      // 获取请求的文件名，并构建文件路径
+      String requestPath = exchange.getRequestURI().getPath();
+      LOGGER.info("++++++++++++++++++++++++ path={}", basePath + requestPath);
+      File file = new File(basePath + requestPath);
+      if (file.exists() && !file.isDirectory()) {
+        // 设置响应头为文件下载
+        if (requestPath.endsWith("html")) {
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+        } else {
+          exchange.getResponseHeaders().set("Content-Type", "text/plain");
+        }
+        exchange.sendResponseHeaders(200, file.length());
+
+        // 读取文件并写入响应体
+        OutputStream os = exchange.getResponseBody();
+        FileInputStream fs = new FileInputStream(file);
+        final byte[] buffer = new byte[0x10000];
+        int count = 0;
+        while ((count = fs.read(buffer)) >= 0) {
+          os.write(buffer, 0, count);
+        }
+        fs.close();
+        os.close();
+      } else {
+        // 如果文件不存在，返回404错误，响应体为"404 (Not Found)，可能文件已被删除，请重新执行查询“
+        String response = "404 (Not Found)，可能文件已被删除，请重新执行查询";
+        exchange.sendResponseHeaders(404, response.length());
+        OutputStream os = exchange.getResponseBody();
+        os.write(response.getBytes());
+        os.close();
+      }
+
+      //      try (InputStream inputStream =
+      //
+      // IginxInterpreter8.class.getClassLoader().getResourceAsStream("gameofthrones.html");
+      //          BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+      //        StringBuilder content = new StringBuilder();
+      //        String line;
+      //        while ((line = reader.readLine()) != null) {
+      //          content.append(line).append("\n");
+      //        }
+      //        LOGGER.info(content.toString());
+      //        exchange.getResponseHeaders().set("Content-Type", "text/html");
+      //        exchange.sendResponseHeaders(200, content.length());
+      //
+      //        OutputStream outputStream = exchange.getResponseBody();
+      //        outputStream.write(content.toString().getBytes());
+      //        // 关闭流
+      //        inputStream.close();
+      //        outputStream.close();
+      //      } catch (IOException e) {
+      //        LOGGER.error("get html error", e);
+      //      }
     }
   }
 

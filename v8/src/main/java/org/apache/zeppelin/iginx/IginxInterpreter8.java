@@ -265,27 +265,35 @@ public class IginxInterpreter8 extends Interpreter {
           StringBuffer stringBuffer = new StringBuffer();
           generateHtml(tree.getRoot(), stringBuffer);
           try (InputStream inputStream =
-                  IginxInterpreter8.class.getClassLoader().getResourceAsStream("tree.html");
+                  IginxInterpreter8.class.getClassLoader().getResourceAsStream("main.html");
               BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             StringBuilder content = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
               content.append(line).append("\n");
             }
-            String html =
-                content
-                    .toString()
-                    .replace("HTML_CONTENT", stringBuffer.toString())
-                    .replace("PARAGRAPH_ID", context.getParagraphId().replace("-", "_"));
-            interpreterResult.add(new InterpreterResultMessage(InterpreterResult.Type.HTML, html));
+            // tree
+            //            String html =
+            //                content
+            //                    .toString()
+            //                    .replace("HTML_CONTENT", stringBuffer.toString())
+            //                    .replace("PARAGRAPH_ID", context.getParagraphId().replace("-",
+            // "_"));
+            //            interpreterResult.add(new
+            // InterpreterResultMessage(InterpreterResult.Type.HTML, html));
+            // graph
+
+            interpreterResult.add(
+                new InterpreterResultMessage(InterpreterResult.Type.HTML, content.toString()));
           } catch (IOException e) {
             LOGGER.warn("load show columns to tree error", e);
           }
         }
-        msg =
-            buildSingleFormResult(
-                sqlResult.getResultInList(true, FormatUtils.DEFAULT_TIME_FORMAT, timePrecision));
-        interpreterResult.add(InterpreterResult.Type.TABLE, msg);
+        //        msg =
+        //            buildSingleFormResult(
+        //                sqlResult.getResultInList(true, FormatUtils.DEFAULT_TIME_FORMAT,
+        // timePrecision));
+        //        interpreterResult.add(InterpreterResult.Type.TABLE, msg);
       } else if (sqlResult.getSqlType() == SqlType.Query && sql.startsWith("explain")) {
         msg =
             buildExplainResult(
